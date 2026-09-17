@@ -1,0 +1,25 @@
+name: cleanup-lockfile-helpers
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/cleanup-lockfile-helpers.yml"
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Remove reconstruction helpers
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm -r --ignore-unmatch .github/lockfile-parts .github/lock.b64.0 .github/workflows/materialize-lockfile.yml .github/workflows/cleanup-lockfile-helpers.yml || true
+          if git diff --cached --quiet; then
+            echo "nothing to clean"
+            exit 0
+          fi
+          git commit -m "chore: remove lockfile reconstruction helpers"
+          git push
