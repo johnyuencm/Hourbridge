@@ -56,6 +56,28 @@ export function converterMetadata(from: Location, to: Location, snapshot: Conver
   };
 }
 
+function hourPhrase(hours: number) {
+  const abs = Math.abs(hours);
+  return `${abs} ${abs === 1 ? "hour" : "hours"}`;
+}
+
+function nineAmFaqAnswer(from: Location, to: Location, snapshot: ConversionSnapshot) {
+  const row = snapshot.table.find((entry) => entry.fromHour === 9);
+  if (!row) return exampleConversionCopy(snapshot);
+  const extra = row.dayDeltaLabel ? ` (${row.dayDeltaLabel})` : "";
+  return `9:00 am in ${locationShortPlace(from)} is ${row.toLabel12}${extra} in ${locationShortPlace(to)}.`;
+}
+
+function dstFaqAnswer(from: Location, to: Location, snapshot: ConversionSnapshot) {
+  if (!snapshot.fromDst.usesDst && !snapshot.toDst.usesDst) {
+    return `No. Neither ${from.name} nor ${to.name} currently changes clocks for daylight saving, so the offset stays ${hourPhrase(snapshot.hoursAhead)} all year.`;
+  }
+  const fromBit = snapshot.fromDst.usesDst ? "changes clocks seasonally" : "keeps a fixed offset";
+  const toBit = snapshot.toDst.usesDst ? "changes clocks seasonally" : "keeps a fixed offset";
+  const gaps = snapshot.yearDiffs.map((diff) => hourPhrase(diff.hours)).join(" or ");
+  return `Yes. ${from.name} ${fromBit}, and ${to.name} ${toBit}. That is why the gap can be ${gaps}.`;
+}
+
 export function faqItems(from: Location, to: Location, snapshot: ConversionSnapshot) {
   return [
     {
@@ -64,16 +86,11 @@ export function faqItems(from: Location, to: Location, snapshot: ConversionSnaps
     },
     {
       question: `What time is it in ${to.name} when it is 9:00 am in ${from.name}?`,
-      answer:
-        snapshot.table.find((row) => row.fromHour === 9)
-          ? `9:00 am in ${locationShortPlace(from)} is ${snapshot.table.find((row) => row.fromHour === 9)!.toLabel12}${snapshot.table.find((row) => row.fromHour === 9)!.dayDeltaLabel ? ` (${snapshot.table.find((row) => row.fromHour === 9)!.dayDeltaLabel})` : ""} in ${locationShortPlace(to)}.`
-          : exampleConversionCopy(snapshot),
+      answer: nineAmFaqAnswer(from, to, snapshot),
     },
     {
       question: `Does daylight saving change ${from.name} to ${to.name} conversion?`,
-      answer: snapshot.fromDst.usesDst || snapshot.toDst.usesDst
-        ? `Yes. ${from.name} ${snapshot.fromDst.usesDst ? "changes clocks seasonally" : "keeps a fixed offset"}, and ${to.name} ${snapshot.toDst.usesDst ? "changes clocks seasonally" : "keeps a fixed offset"}. That is why the gap can be ${snapshot.yearDiffs.map((d) => `${Math.abs(d.hours)} hour${Math.abs(d.hours) === 1 ? "" : "s"}`).join(" or ").}`
-        : `No. Neither ${from.name} nor ${to.name} currently changes clocks for daylight saving, so the offset stays ${Math.abs(snapshot.hoursAhead)} hour${Math.abs(snapshot.hoursAhead) === 1 ? "" : "s"} all year.`,
+      answer: dstFaqAnswer(from, to, snapshot),
     },
     {
       question: `When is a good time for a call between ${from.name} and ${to.name}?`,
