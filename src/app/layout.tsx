@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import Script from "next/script";
 import { Geist, Geist_Mono } from "next/font/google";
+import { Analytics } from "@vercel/analytics/next";
 import { AdSlot } from "@/components/ad-slot";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
@@ -112,6 +113,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           </div>
           <SiteFooter />
         </TooltipProvider>
+        <Analytics />
       </body>
     </html>
   );
