@@ -33,7 +33,15 @@ export function getSiteUrl() {
 }
 
 export function googleSiteVerification() {
-  const raw = process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION?.trim() ?? "";
+  let raw = process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION?.trim() ?? "";
+  if (!raw) return "";
+  const metaContent = raw.match(/content\s*=\s*["']?([\w-]+)["']?/i);
+  if (/<meta/i.test(raw) && metaContent) {
+    raw = metaContent[1];
+  }
+  const prefixed = raw.match(/^google-site-verification=(.+)$/i);
+  if (prefixed) raw = prefixed[1].trim();
+  raw = raw.replace(/^["']|["']$/g, "").trim();
   return GOOGLE_VERIFICATION_RE.test(raw) ? raw : "";
 }
 
