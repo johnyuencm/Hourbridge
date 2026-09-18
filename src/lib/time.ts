@@ -165,7 +165,16 @@ export function dayDeltaLabel(delta: number) {
 }
 
 export function hoursBetweenOffsets(fromOffsetMinutes: number, toOffsetMinutes: number) {
-  return Math.round((toOffsetMinutes - fromOffsetMinutes) / 60);
+  // Keep fractional hours (e.g. Asia/Kolkata +05:30 → 5.5). Offsets are integer minutes.
+  return (toOffsetMinutes - fromOffsetMinutes) / 60;
+}
+
+/** Pretty-print a signed hour delta for copy ("5.5 hours", "1 hour"). */
+export function formatHoursPhrase(hours: number) {
+  const abs = Math.abs(hours);
+  const normalized = Math.round(abs * 60) / 60;
+  const label = Number.isInteger(normalized) ? String(normalized) : String(normalized);
+  return `${label} ${normalized === 1 ? "hour" : "hours"}`;
 }
 
 export type DstInfo = {
