@@ -45,8 +45,10 @@ export function googleSiteVerification() {
   return GOOGLE_VERIFICATION_RE.test(raw) ? raw : "";
 }
 
+export const ADSENSE_CLIENT_DEFAULT = "ca-pub-5437937713747043";
+
 function adsenseClient() {
-  const raw = process.env.NEXT_PUBLIC_ADSENSE_CLIENT?.trim() ?? "";
+  const raw = process.env.NEXT_PUBLIC_ADSENSE_CLIENT?.trim() || ADSENSE_CLIENT_DEFAULT;
   return ADSENSE_CLIENT_RE.test(raw) ? raw : "";
 }
 
