@@ -2,9 +2,11 @@ export const SITE_NAME = "Hourbridge";
 export const SITE_TAGLINE = "World clock and city-to-city time converter";
 export const SITE_DESCRIPTION =
   "Convert local time between cities and time zones. See live clocks, daylight saving changes, meeting overlap, and a 24-hour conversion table.";
+export const PRODUCTION_SITE_URL = "https://hourbridge.vercel.app";
 
 const ADSENSE_CLIENT_RE = /^ca-pub-\d{10,20}$/;
 const ADSENSE_SLOT_RE = /^\d{6,20}$/;
+const GOOGLE_VERIFICATION_RE = /^[\w-]{6,128}$/;
 
 function originFrom(value: string | undefined): string | null {
   if (!value) return null;
@@ -24,9 +26,15 @@ export function getSiteUrl() {
   return (
     originFrom(process.env.NEXT_PUBLIC_SITE_URL) ||
     originFrom(process.env.VERCEL_PROJECT_PRODUCTION_URL) ||
+    (process.env.VERCEL_ENV === "production" ? PRODUCTION_SITE_URL : null) ||
     originFrom(process.env.VERCEL_URL) ||
     "http://127.0.0.1:43123"
   );
+}
+
+export function googleSiteVerification() {
+  const raw = process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION?.trim() ?? "";
+  return GOOGLE_VERIFICATION_RE.test(raw) ? raw : "";
 }
 
 function adsenseClient() {

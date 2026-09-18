@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { AdSlot } from "@/components/ad-slot";
 import { getSiteUrl, SITE_NAME } from "@/lib/site";
 
 export const metadata: Metadata = {
   title: "About the converter",
   description:
-    "How Hourbridge converts time between cities, why daylight saving changes the gap, and how to connect Google AdSense.",
+    "How Hourbridge converts time between cities, why daylight saving changes the gap, and how to connect Google Search Console and AdSense.",
   alternates: { canonical: `${getSiteUrl()}/about` },
 };
 
@@ -28,22 +29,28 @@ export default function AboutPage() {
         up when they should. Hong Kong Time stays UTC+8 all year, which is why the Seattle gap
         is usually 15 hours in summer and 16 hours in winter.
       </p>
+      <h2 className="mt-8 text-xl font-semibold text-teal-950">Search visibility</h2>
+      <p className="mt-2 text-stone-700 leading-7">
+        Pair pages ship unique titles, descriptions, canonicals, FAQ copy, and JSON-LD. Submit{" "}
+        <Link href="/sitemap.xml" className="text-teal-800 underline">
+          /sitemap.xml
+        </Link>{" "}
+        in Google Search Console and keep Deployment Protection off so Googlebot can fetch the
+        public site.
+      </p>
       <h2 className="mt-8 text-xl font-semibold text-teal-950">Google Ads</h2>
       <p className="mt-2 text-stone-700 leading-7">
         Leaderboard, rectangle, in-article, footer, and mobile banner slots are reserved on every
-        converter page. They render labeled placeholders until you set{" "}
-        <code className="rounded bg-stone-200 px-1">NEXT_PUBLIC_ADSENSE_CLIENT</code> and the
-        matching slot IDs. <code className="rounded bg-stone-200 px-1">/ads.txt</code> is generated
-        from the same client id.
+        converter page. Set <code className="rounded bg-stone-200 px-1">NEXT_PUBLIC_ADSENSE_CLIENT</code>{" "}
+        to your <code className="rounded bg-stone-200 px-1">ca-pub-…</code> id, redeploy, then
+        confirm{" "}
+        <Link href="/ads.txt" className="text-teal-800 underline">
+          /ads.txt
+        </Link>{" "}
+        lists <code className="rounded bg-stone-200 px-1">google.com, pub-…, DIRECT</code>. Create
+        matching display units in AdSense and paste those numeric slot ids into the{" "}
+        <code className="rounded bg-stone-200 px-1">NEXT_PUBLIC_ADSENSE_SLOT_*</code> variables.
       </p>
-      <h2 className="mt-8 text-xl font-semibold text-teal-950">SEO</h2>
-      <ul className="mt-2 list-disc space-y-1 pl-5 text-stone-700">
-        <li>Unique title, description, and canonical on every pair and city page</li>
-        <li>FAQ, breadcrumb, and WebApplication JSON-LD</li>
-        <li>XML sitemap covering hub converter pairs and world-clock cities</li>
-        <li>Server-rendered conversion tables so crawlers see the hour mapping</li>
-        <li>Open Graph images generated per converter slug</li>
-      </ul>
     </div>
   );
 }

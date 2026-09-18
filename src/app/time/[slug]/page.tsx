@@ -169,6 +169,22 @@ export default async function CityTimePage({ params }: PageProps) {
               : undefined,
         }}
       />
+      <JsonLd
+        data={{
+          "@context": "https://schema.org",
+          "@type": "BreadcrumbList",
+          itemListElement: [
+            { "@type": "ListItem", position: 1, name: "Home", item: getSiteUrl() },
+            { "@type": "ListItem", position: 2, name: "World clock", item: `${getSiteUrl()}/time` },
+            {
+              "@type": "ListItem",
+              position: 3,
+              name: location.name,
+              item: `${getSiteUrl()}/time/${location.slug}`,
+            },
+          ],
+        }}
+      />
     </div>
   );
 }

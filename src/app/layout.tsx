@@ -5,7 +5,16 @@ import { AdSlot } from "@/components/ad-slot";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { ADSENSE, getSiteUrl, SITE_DESCRIPTION, SITE_NAME, SITE_TAGLINE } from "@/lib/site";
+import { JsonLd } from "@/components/json-ld";
+import { siteJsonLd } from "@/lib/seo";
+import {
+  ADSENSE,
+  getSiteUrl,
+  googleSiteVerification,
+  SITE_DESCRIPTION,
+  SITE_NAME,
+  SITE_TAGLINE,
+} from "@/lib/site";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -19,6 +28,7 @@ const geistMono = Geist_Mono({
 });
 
 const siteUrl = getSiteUrl();
+const googleVerification = googleSiteVerification();
 
 export const viewport: Viewport = {
   themeColor: "#042f2e",
@@ -63,6 +73,10 @@ export const metadata: Metadata = {
   },
   alternates: { canonical: siteUrl },
   category: "utilities",
+  verification: {
+    ...(googleVerification ? { google: googleVerification } : {}),
+    ...(ADSENSE.client ? { other: { "google-adsense-account": ADSENSE.client } } : {}),
+  },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
@@ -81,6 +95,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
             strategy="afterInteractive"
           />
         ) : null}
+        <JsonLd data={siteJsonLd()} />
         <TooltipProvider>
           <a
             href="#main"

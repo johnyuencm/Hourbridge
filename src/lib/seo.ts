@@ -4,7 +4,7 @@ import {
   locationShortPlace,
   type Location,
 } from "@/lib/locations";
-import { getSiteUrl, SITE_NAME } from "@/lib/site";
+import { getSiteUrl, SITE_DESCRIPTION, SITE_NAME } from "@/lib/site";
 import { differenceCopy, exampleConversionCopy, type ConversionSnapshot } from "@/lib/converter";
 import { formatHoursPhrase } from "@/lib/time";
 
@@ -98,6 +98,23 @@ export function faqItems(from: Location, to: Location, snapshot: ConversionSnaps
         `There is little shared office-hour overlap. Early evening in ${locationShortPlace(from)} is often the least painful window for ${locationShortPlace(to)}.`,
     },
   ];
+}
+
+export function siteJsonLd() {
+  const url = getSiteUrl();
+  return {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    name: SITE_NAME,
+    url,
+    description: SITE_DESCRIPTION,
+    inLanguage: "en-US",
+    publisher: {
+      "@type": "Organization",
+      name: SITE_NAME,
+      url,
+    },
+  };
 }
 
 export function converterJsonLd(

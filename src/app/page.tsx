@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { AdSlot } from "@/components/ad-slot";
-import { JsonLd } from "@/components/json-ld";
 import { PairSearch } from "@/components/location-search";
 import { getLocation, LOCATIONS, POPULAR_PAIRS, locationShortPlace } from "@/lib/locations";
 import { getSiteUrl, SITE_DESCRIPTION, SITE_NAME } from "@/lib/site";
@@ -18,15 +17,6 @@ export default function HomePage() {
 
   return (
     <div className="bg-[radial-gradient(circle_at_top,_#d7eee9,_transparent_42%),linear-gradient(#f7f4ee,#f4f1ea)]">
-      <JsonLd
-        data={{
-          "@context": "https://schema.org",
-          "@type": "WebSite",
-          name: SITE_NAME,
-          url: getSiteUrl(),
-          description: SITE_DESCRIPTION,
-        }}
-      />
       <section className="mx-auto max-w-6xl px-4 pb-10 pt-10 md:pt-16">
         <p className="text-sm font-semibold uppercase tracking-[0.18em] text-teal-800">
           World clock · DST aware
