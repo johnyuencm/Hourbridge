@@ -14,6 +14,7 @@ import {
   getZoneParts,
   hourLabel12,
   hourLabel24,
+  formatHoursPhrase,
   hoursBetweenOffsets,
   isNightHour,
   isWorkHour,
@@ -193,8 +194,8 @@ export function buildSnapshot(
       fromLabel24: hourLabel24(hour),
       toHour: rowTo.hour,
       toMinute: rowTo.minute,
-      toLabel12: hourLabel12(rowTo.hour),
-      toLabel24: hourLabel24(rowTo.hour),
+      toLabel12: formatClockShort({ hour: rowTo.hour, minute: rowTo.minute }, true),
+      toLabel24: formatClockShort({ hour: rowTo.hour, minute: rowTo.minute }, false),
       dayDelta: delta,
       dayDeltaLabel: dayDeltaLabel(delta),
       isNow: hour === currentHour,
@@ -258,32 +259,26 @@ export function buildSnapshot(
 }
 
 export function differenceCopy(snapshot: ConversionSnapshot) {
-  const abs = Math.abs(snapshot.hoursAhead);
-  const hourWord = abs === 1 ? "hour" : "hours";
   if (snapshot.hoursAhead === 0) {
     return `${locationFullName(snapshot.from)} and ${locationFullName(snapshot.to)} share the same local time right now.`;
   }
+  const phrase = formatHoursPhrase(snapshot.hoursAhead);
   if (snapshot.hoursAhead > 0) {
-    return `${locationShortPlace(snapshot.from)} is ${abs} ${hourWord} behind ${locationShortPlace(snapshot.to)}.`;
+    return `${locationShortPlace(snapshot.from)} is ${phrase} behind ${locationShortPlace(snapshot.to)}.`;
   }
-  return `${locationShortPlace(snapshot.from)} is ${abs} ${hourWord} ahead of ${locationShortPlace(snapshot.to)}.`;
+  return `${locationShortPlace(snapshot.from)} is ${phrase} ahead of ${locationShortPlace(snapshot.to)}.`;
 }
 
 export function seasonalDifferenceCopy(snapshot: ConversionSnapshot) {
   if (snapshot.yearDiffs.length <= 1) {
     const hours = snapshot.yearDiffs[0]?.hours ?? snapshot.hoursAhead;
-    const abs = Math.abs(hours);
-    const word = abs === 1 ? "hour" : "hours";
     const relation = hours >= 0 ? "behind" : "ahead of";
-    return `${locationShortPlace(snapshot.from)} stays ${abs} ${word} ${relation} ${locationShortPlace(snapshot.to)} all year.`;
+    return `${locationShortPlace(snapshot.from)} stays ${formatHoursPhrase(hours)} ${relation} ${locationShortPlace(snapshot.to)} all year.`;
   }
   const [main, other] = snapshot.yearDiffs;
   const phrase = (hours: number) => {
-    const abs = Math.abs(hours);
-    const word = abs === 1 ? "hour" : "hours";
-    return hours >= 0
-      ? `${abs} ${word} behind`
-      : `${abs} ${word} ahead of`;
+    const span = formatHoursPhrase(hours);
+    return hours >= 0 ? `${span} behind` : `${span} ahead of`;
   };
   return `For most of the year, ${locationShortPlace(snapshot.from)} is ${phrase(main.hours)} ${locationShortPlace(snapshot.to)}. At other times of the year, it is ${phrase(other.hours)} ${locationShortPlace(snapshot.to)}.`;
 }
