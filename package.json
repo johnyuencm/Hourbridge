@@ -10,6 +10,7 @@
     "test": "node --test src/lib/hours-between.test.mjs"
   },
   "dependencies": {
+    "@vercel/analytics": "^2.0.1",
     "class-variance-authority": "^0.7.1",
     "cmdk": "^1.1.1",
     "cn": "^0.3.0",
