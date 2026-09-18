@@ -6,7 +6,8 @@
     "dev": "next dev --hostname 127.0.0.1 --port 43123",
     "build": "next build",
     "start": "next start --hostname 127.0.0.1 --port 43123",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test": "node --test src/lib/hours-between.test.mjs"
   },
   "dependencies": {
     "class-variance-authority": "^0.7.1",

@@ -6,6 +6,7 @@ import {
 } from "@/lib/locations";
 import { getSiteUrl, SITE_NAME } from "@/lib/site";
 import { differenceCopy, exampleConversionCopy, type ConversionSnapshot } from "@/lib/converter";
+import { formatHoursPhrase } from "@/lib/time";
 
 export function converterTitle(from: Location, to: Location) {
   const toLabel = to.abbreviation && to.kind === "timezone" ? to.abbreviation : to.name;
@@ -57,8 +58,7 @@ export function converterMetadata(from: Location, to: Location, snapshot: Conver
 }
 
 function hourPhrase(hours: number) {
-  const abs = Math.abs(hours);
-  return `${abs} ${abs === 1 ? "hour" : "hours"}`;
+  return formatHoursPhrase(hours);
 }
 
 function nineAmFaqAnswer(from: Location, to: Location, snapshot: ConversionSnapshot) {
