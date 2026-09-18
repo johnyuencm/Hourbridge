@@ -13,7 +13,7 @@ import {
   locationShortPlace,
 } from "@/lib/locations";
 import { converterJsonLd, converterMetadata, converterTitle, faqItems } from "@/lib/seo";
-import { parseDateInput, parseTimeInput, zonedTimeToUtc } from "@/lib/time";
+import { formatHoursPhrase, parseDateInput, parseTimeInput, zonedTimeToUtc } from "@/lib/time";
 
 export const revalidate = 60;
 export const dynamicParams = true;
@@ -175,11 +175,10 @@ export default async function ConverterPage({ params, searchParams }: PageProps)
 }
 
 function formatSignedHours(hours: number) {
-  const abs = Math.abs(hours);
-  const word = abs === 1 ? "hour" : "hours";
   if (hours === 0) return "the same local time as";
-  if (hours > 0) return `${abs} ${word} behind`;
-  return `${abs} ${word} ahead of`;
+  const phrase = formatHoursPhrase(hours);
+  if (hours > 0) return `${phrase} behind`;
+  return `${phrase} ahead of`;
 }
 
 function exampleLine(snapshot: ReturnType<typeof buildSnapshot>) {
