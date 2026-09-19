@@ -61,20 +61,18 @@ Do not expect rankings the same day. Google has to recrawl. The work that moves 
 
 Slots are already reserved on converter, city, home, and footer. They stay dashed placeholders until AdSense is approved and slot ids are set.
 
-1. Create an [AdSense](https://www.google.com/adsense) account with the same Google account you use for Search Console.
+The publisher snippet is already live (`ca-pub-5437937713747043`). You do not need to paste the `<script>` again.
+
+1. Use the **website** AdSense product at [adsense.google.com](https://www.google.com/adsense) — not AdSense for YouTube.
 2. **Sites → + New site** and enter `https://hourbridge.vercel.app`.
-3. **Connect the site** with the publisher id (Account → Settings → Account information, looks like `ca-pub-1234…`).
-4. In Vercel, set for Production:
-   - `NEXT_PUBLIC_ADSENSE_CLIENT` = `ca-pub-…` (include the `ca-pub-` prefix)
-   - Redeploy.
-5. Confirm three things after the deploy:
-   - View source on the homepage: `<meta name="google-adsense-account" content="ca-pub-…">`
-   - The AdSense script tag is present
-   - [https://hourbridge.vercel.app/ads.txt](https://hourbridge.vercel.app/ads.txt) is exactly one line:
-     `google.com, pub-YOUR_NUMBERS, DIRECT, f08c47fec0942fa0`
+3. Confirm three things on production (already true after the latest deploy):
+   - View source: `<meta name="google-adsense-account" content="ca-pub-5437937713747043">`
+   - Script: `adsbygoogle.js?client=ca-pub-5437937713747043`
+   - [https://hourbridge.vercel.app/ads.txt](https://hourbridge.vercel.app/ads.txt) is exactly:
+     `google.com, pub-5437937713747043, DIRECT, f08c47fec0942fa0`
      (`pub-`, not `ca-pub-`)
-6. Back in AdSense, click **Verify** / **Request review**. Approval can take days. Ads will not fill before the site status is Ready.
-7. After Ready, **Ads → By ad unit → Display ads** and create units that match the reserved sizes:
+4. Back in AdSense, click **Verify** / **Request review**. Approval can take days. Ads will not fill before the site status is Ready. Optional: set `NEXT_PUBLIC_ADSENSE_CLIENT` on Vercel if you ever rotate publisher ids.
+5. After Ready, **Ads → By ad unit → Display ads** and create units that match the reserved sizes:
 
 | Placement | Size | Env var |
 | --- | --- | --- |

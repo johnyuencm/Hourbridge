@@ -40,16 +40,15 @@ export default function AboutPage() {
       </p>
       <h2 className="mt-8 text-xl font-semibold text-teal-950">Google Ads</h2>
       <p className="mt-2 text-stone-700 leading-7">
-        Leaderboard, rectangle, in-article, footer, and mobile banner slots are reserved on every
-        converter page. Set <code className="rounded bg-stone-200 px-1">NEXT_PUBLIC_ADSENSE_CLIENT</code>{" "}
-        to your <code className="rounded bg-stone-200 px-1">ca-pub-…</code> id, redeploy, then
-        confirm{" "}
+        The AdSense loader for <code className="rounded bg-stone-200 px-1">ca-pub-5437937713747043</code>{" "}
+        is already on every page, and{" "}
         <Link href="/ads.txt" className="text-teal-800 underline">
           /ads.txt
         </Link>{" "}
-        lists <code className="rounded bg-stone-200 px-1">google.com, pub-…, DIRECT</code>. Create
-        matching display units in AdSense and paste those numeric slot ids into the{" "}
-        <code className="rounded bg-stone-200 px-1">NEXT_PUBLIC_ADSENSE_SLOT_*</code> variables.
+        publishes <code className="rounded bg-stone-200 px-1">google.com, pub-5437937713747043, DIRECT</code>.
+        Leaderboard, rectangle, in-article, footer, and mobile slots stay reserved until you create
+        matching display units in AdSense and paste the numeric ids into{" "}
+        <code className="rounded bg-stone-200 px-1">NEXT_PUBLIC_ADSENSE_SLOT_*</code>.
       </p>
     </div>
   );
