@@ -20,12 +20,14 @@ import {
 } from "@/lib/converter";
 import { locationFullName, locationShortPlace, type Location } from "@/lib/locations";
 import {
+  formatClockShort,
   formatOffset,
   parseDateInput,
   parseTimeInput,
+  resolveZonedTime,
   toDateInput,
   toTimeInput,
-  zonedTimeToUtc,
+  type ZonedTimeResolution,
 } from "@/lib/time";
 import { cn } from "@/lib/utils";
 
@@ -44,13 +46,26 @@ export function ConverterView({
   const [timeValue, setTimeValue] = useState(toTimeInput(initial.fromParts));
   const [picking, setPicking] = useState<"from" | "to" | null>(null);
 
-  const snapshot = useMemo(() => {
+  const resolvedLocal = useMemo((): ZonedTimeResolution | null => {
     const date = parseDateInput(dateValue);
-    if (!date) return initial;
+    if (!date) return null;
     const time = parseTimeInput(timeValue);
-    const instant = zonedTimeToUtc(from.iana, date.year, date.month, date.day, time.hour, time.minute);
-    return buildSnapshot(from, to, instant, time.hour);
-  }, [dateValue, timeValue, from, to, initial]);
+    return resolveZonedTime(from.iana, date.year, date.month, date.day, time.hour, time.minute);
+  }, [dateValue, timeValue, from.iana]);
+
+  const snapshot = useMemo(() => {
+    if (!resolvedLocal) return initial;
+    return buildSnapshot(from, to, resolvedLocal.instant, resolvedLocal.resolved.hour);
+  }, [resolvedLocal, from, to, initial]);
+
+  const dstLocalWarning = useMemo(() => {
+    if (!resolvedLocal || resolvedLocal.status === "ok") return null;
+    const shown = formatClockShort(resolvedLocal.resolved, hour12);
+    if (resolvedLocal.status === "gap") {
+      return `That local time does not exist in ${from.name} (DST spring forward). Showing ${shown} instead.`;
+    }
+    return `That local time is ambiguous in ${from.name} (DST fall back). Using the earlier occurrence (${shown}).`;
+  }, [resolvedLocal, hour12, from.name]);
 
   return (
     <div className="space-y-6">
@@ -94,6 +109,15 @@ export function ConverterView({
           </Button>
         </div>
       </div>
+
+      {dstLocalWarning ? (
+        <p
+          role="status"
+          className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-950"
+        >
+          {dstLocalWarning}
+        </p>
+      ) : null}
 
       <div className="relative grid gap-4 md:grid-cols-[1fr_auto_1fr]">
         <div>

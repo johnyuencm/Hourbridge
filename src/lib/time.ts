@@ -63,6 +63,136 @@ export function getOffsetMinutes(timeZone: string, date: Date) {
   return Math.round((asUtc - date.getTime()) / 60_000);
 }
 
+export type ZonedTimeStatus = "ok" | "gap" | "fold";
+
+export type ZonedTimeResolution = {
+  /** Chosen UTC instant (gap: clamped forward; fold: earlier occurrence). */
+  instant: Date;
+  status: ZonedTimeStatus;
+  /** Wall-clock parts of `instant` in the zone. */
+  resolved: ZoneParts;
+  /** For fold: the later occurrence of the same local wall time. */
+  alternate?: Date;
+};
+
+function wallClockMatches(
+  date: Date,
+  timeZone: string,
+  year: number,
+  month: number,
+  day: number,
+  hour: number,
+  minute: number,
+  second: number,
+) {
+  const parts = getZoneParts(date, timeZone);
+  return (
+    parts.year === year &&
+    parts.month === month &&
+    parts.day === day &&
+    parts.hour === hour &&
+    parts.minute === minute &&
+    parts.second === second
+  );
+}
+
+function collectNearbyOffsets(timeZone: string, utcGuessMs: number) {
+  const offsets = new Set<number>();
+  for (const deltaHours of [-36, -24, -12, -2, 0, 2, 12, 24, 36]) {
+    offsets.add(getOffsetMinutes(timeZone, new Date(utcGuessMs + deltaHours * 3_600_000)));
+  }
+  return offsets;
+}
+
+function exactZonedMatches(
+  timeZone: string,
+  year: number,
+  month: number,
+  day: number,
+  hour: number,
+  minute: number,
+  second: number,
+) {
+  const utcGuess = Date.UTC(year, month - 1, day, hour, minute, second);
+  const matches: Date[] = [];
+  for (const offset of collectNearbyOffsets(timeZone, utcGuess)) {
+    const candidate = new Date(utcGuess - offset * 60_000);
+    if (
+      wallClockMatches(candidate, timeZone, year, month, day, hour, minute, second) &&
+      !matches.some((m) => m.getTime() === candidate.getTime())
+    ) {
+      matches.push(candidate);
+    }
+  }
+  matches.sort((a, b) => a.getTime() - b.getTime());
+  return matches;
+}
+
+/**
+ * Resolve a local civil time in `timeZone` to UTC.
+ * - ok: unique mapping
+ * - gap: local time skipped by spring-forward; clamps forward to the next valid minute
+ * - fold: local time repeated by fall-back; picks the earlier occurrence (`alternate` is later)
+ */
+export function resolveZonedTime(
+  timeZone: string,
+  year: number,
+  month: number,
+  day: number,
+  hour: number,
+  minute: number,
+  second = 0,
+): ZonedTimeResolution {
+  const matches = exactZonedMatches(timeZone, year, month, day, hour, minute, second);
+  if (matches.length >= 2) {
+    return {
+      instant: matches[0],
+      status: "fold",
+      resolved: getZoneParts(matches[0], timeZone),
+      alternate: matches[matches.length - 1],
+    };
+  }
+  if (matches.length === 1) {
+    return {
+      instant: matches[0],
+      status: "ok",
+      resolved: getZoneParts(matches[0], timeZone),
+    };
+  }
+
+  // Spring gap (or other nonexistent local time): walk local clock forward up to 3h.
+  for (let addMinutes = 1; addMinutes <= 180; addMinutes += 1) {
+    const probe = new Date(Date.UTC(year, month - 1, day, hour, minute + addMinutes, second));
+    const ly = probe.getUTCFullYear();
+    const lm = probe.getUTCMonth() + 1;
+    const ld = probe.getUTCDate();
+    const lh = probe.getUTCHours();
+    const lmin = probe.getUTCMinutes();
+    const ls = probe.getUTCSeconds();
+    const found = exactZonedMatches(timeZone, ly, lm, ld, lh, lmin, ls);
+    if (found.length > 0) {
+      return {
+        instant: found[0],
+        status: "gap",
+        resolved: getZoneParts(found[0], timeZone),
+      };
+    }
+  }
+
+  // Last resort: legacy single-offset adjust (should be unreachable for real IANA zones).
+  const utcGuess = Date.UTC(year, month - 1, day, hour, minute, second);
+  const offset1 = getOffsetMinutes(timeZone, new Date(utcGuess));
+  const adjusted = new Date(utcGuess - offset1 * 60_000);
+  const offset2 = getOffsetMinutes(timeZone, adjusted);
+  const instant = offset2 === offset1 ? adjusted : new Date(utcGuess - offset2 * 60_000);
+  return {
+    instant,
+    status: "gap",
+    resolved: getZoneParts(instant, timeZone),
+  };
+}
+
+/** UTC instant for a local wall time. Gaps clamp forward; folds use the earlier occurrence. */
 export function zonedTimeToUtc(
   timeZone: string,
   year: number,
@@ -72,12 +202,7 @@ export function zonedTimeToUtc(
   minute: number,
   second = 0,
 ) {
-  const utcGuess = Date.UTC(year, month - 1, day, hour, minute, second);
-  const offset1 = getOffsetMinutes(timeZone, new Date(utcGuess));
-  const adjusted = new Date(utcGuess - offset1 * 60_000);
-  const offset2 = getOffsetMinutes(timeZone, adjusted);
-  if (offset2 === offset1) return adjusted;
-  return new Date(utcGuess - offset2 * 60_000);
+  return resolveZonedTime(timeZone, year, month, day, hour, minute, second).instant;
 }
 
 export function formatOffset(offsetMinutes: number) {
@@ -197,6 +322,47 @@ function remember<T>(cache: Map<string, T>, key: string, value: T, max = 512) {
   return value;
 }
 
+/** Scan forward ~400 days from `from` for the next UTC-offset change; refine to ~1 minute. */
+function findNextOffsetChange(
+  timeZone: string,
+  from: Date,
+): { at: Date; toOffsetMinutes: number } | null {
+  const startMs = from.getTime();
+  if (Number.isNaN(startMs)) return null;
+  const endMs = startMs + 400 * 86_400_000;
+  let prev = getOffsetMinutes(timeZone, from);
+  let windowStart = startMs;
+  let windowEnd: number | null = null;
+
+  // Coarse hourly scan from the instant (covers year boundary into year+1).
+  for (let t = startMs + 3_600_000; t <= endMs; t += 3_600_000) {
+    const current = getOffsetMinutes(timeZone, new Date(t));
+    if (current !== prev) {
+      windowEnd = t;
+      break;
+    }
+    windowStart = t;
+    prev = current;
+  }
+  if (windowEnd == null) return null;
+
+  const baseOffset = getOffsetMinutes(timeZone, new Date(windowStart));
+  let lo = windowStart;
+  let hi = windowEnd;
+  while (hi - lo > 60_000) {
+    const mid = Math.floor((lo + hi) / 2);
+    if (getOffsetMinutes(timeZone, new Date(mid)) === baseOffset) lo = mid;
+    else hi = mid;
+  }
+  for (let t = lo; t <= hi; t += 60_000) {
+    const offset = getOffsetMinutes(timeZone, new Date(t));
+    if (offset !== baseOffset) {
+      return { at: new Date(t), toOffsetMinutes: offset };
+    }
+  }
+  return { at: new Date(hi), toOffsetMinutes: getOffsetMinutes(timeZone, new Date(hi)) };
+}
+
 export function getDstInfo(
   timeZone: string,
   date: Date,
@@ -219,28 +385,7 @@ export function getDstInfo(
   const inDst = usesDst && offsetMinutes === max;
   let nextChange: DstInfo["nextChange"] = null;
   if (usesDst) {
-    const startMs = Date.UTC(year, 0, 1, 12);
-    const endMs = Date.UTC(year + 1, 0, 1, 12);
-    let prev = getOffsetMinutes(timeZone, new Date(startMs));
-    for (let t = startMs; t < endMs; t += 86_400_000) {
-      const cursor = new Date(t);
-      const current = getOffsetMinutes(timeZone, cursor);
-      if (current !== prev && cursor > instant) {
-        const dayStart = t - 86_400_000;
-        let last = prev;
-        for (let h = dayStart; h <= t; h += 3_600_000) {
-          const hourDate = new Date(h);
-          const hourOffset = getOffsetMinutes(timeZone, hourDate);
-          if (hourOffset !== last && hourDate > instant) {
-            nextChange = { at: hourDate, toOffsetMinutes: hourOffset };
-            break;
-          }
-          last = hourOffset;
-        }
-        break;
-      }
-      prev = current;
-    }
+    nextChange = findNextOffsetChange(timeZone, instant);
   }
   return remember(dstInfoCache, cacheKey, {
     usesDst,
