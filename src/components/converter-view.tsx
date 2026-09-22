@@ -208,7 +208,8 @@ export function ConverterView({
         </h2>
         <p className="mt-1 text-sm text-muted-foreground">
           Each row is one hour in {locationShortPlace(from)} on {snapshot.fromDateLabel}. Highlighted
-          row is the selected hour. Green tint marks typical 9am–5pm office hours.
+          row is the selected hour. Green tint marks typical 9am–5pm office hours. Hours skipped by
+          a DST spring-forward are marked and are not treated as a unique local time.
         </p>
         <Tabs defaultValue="12h" className="mt-4">
           <TabsList>
@@ -252,21 +253,37 @@ function ConversionTable({
               key={`${hour12}-${row.fromHour}`}
               className={cn(
                 "border-b",
-                row.isNow && "bg-amber-200 font-semibold",
-                !row.isNow && row.isWorkFrom && row.isWorkTo && "bg-emerald-50",
-                !row.isNow && (row.isNightFrom || row.isNightTo) && "bg-slate-50",
+                row.status === "gap" && "bg-amber-50 text-stone-500",
+                row.isNow && row.status !== "gap" && "bg-amber-200 font-semibold",
+                !row.isNow &&
+                  row.status !== "gap" &&
+                  row.isWorkFrom &&
+                  row.isWorkTo &&
+                  "bg-emerald-50",
+                !row.isNow &&
+                  row.status !== "gap" &&
+                  (row.isNightFrom || row.isNightTo) &&
+                  "bg-slate-50",
               )}
             >
               <td className="px-3 py-1.5">
                 {hour12 ? row.fromLabel12 : row.fromLabel24}
               </td>
               <td className="px-3 py-1.5">
-                {hour12 ? row.toLabel12 : row.toLabel24}
-                {row.dayDeltaLabel ? (
-                  <span className="ml-1 text-xs font-normal text-muted-foreground">
-                    {row.dayDeltaLabel}
+                {row.status === "gap" ? (
+                  <span className="text-xs font-normal text-amber-900">
+                    does not exist (DST skip)
                   </span>
-                ) : null}
+                ) : (
+                  <>
+                    {hour12 ? row.toLabel12 : row.toLabel24}
+                    {row.dayDeltaLabel ? (
+                      <span className="ml-1 text-xs font-normal text-muted-foreground">
+                        {row.dayDeltaLabel}
+                      </span>
+                    ) : null}
+                  </>
+                )}
               </td>
             </tr>
           ))}

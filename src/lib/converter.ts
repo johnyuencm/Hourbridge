@@ -20,9 +20,10 @@ import {
   isWorkHour,
   yearlyDifferenceShares,
   zoneAbbreviation,
-  zonedTimeToUtc,
+  resolveZonedTime,
   type DstInfo,
   type ZoneParts,
+  type ZonedTimeStatus,
 } from "@/lib/time";
 
 export type TableRow = {
@@ -40,6 +41,9 @@ export type TableRow = {
   isWorkTo: boolean;
   isNightFrom: boolean;
   isNightTo: boolean;
+  /** ok / fold map to a real local hour; gap hours are skipped by DST spring-forward. */
+  status: ZonedTimeStatus;
+  instantIso: string | null;
 };
 
 export type MeetingWindow = {
@@ -90,7 +94,7 @@ function bestMeeting(
   for (let minute = 0; minute < 24 * 60; minute += 30) {
     const hour = Math.floor(minute / 60);
     const min = minute % 60;
-    const instant = zonedTimeToUtc(
+    const resolved = resolveZonedTime(
       from.iana,
       fromParts.year,
       fromParts.month,
@@ -98,7 +102,8 @@ function bestMeeting(
       hour,
       min,
     );
-    const toP = getZoneParts(instant, to.iana);
+    if (resolved.status === "gap") continue;
+    const toP = getZoneParts(resolved.instant, to.iana);
     const score = workScore(hour) + workScore(toP.hour);
     if (score >= 0.9) {
       candidates.push({
@@ -122,7 +127,7 @@ function bestMeeting(
     true,
   );
   const toStart = formatClockShort({ hour: start.toH, minute: start.toM }, true);
-  const toEndInstant = zonedTimeToUtc(
+  const toEndResolved = resolveZonedTime(
     from.iana,
     fromParts.year,
     fromParts.month,
@@ -130,21 +135,19 @@ function bestMeeting(
     Math.floor(endMinute / 60) % 24,
     endMinute % 60,
   );
-  const toEndParts = getZoneParts(toEndInstant, to.iana);
+  const toEndParts = getZoneParts(toEndResolved.instant, to.iana);
   const toEnd = formatClockShort(toEndParts, true);
+  const startResolved = resolveZonedTime(
+    from.iana,
+    fromParts.year,
+    fromParts.month,
+    fromParts.day,
+    start.fromH,
+    start.minute % 60,
+  );
   const toDelta = dayDelta(
     { ...fromParts, hour: start.fromH, minute: start.minute % 60, second: 0 },
-    getZoneParts(
-      zonedTimeToUtc(
-        from.iana,
-        fromParts.year,
-        fromParts.month,
-        fromParts.day,
-        start.fromH,
-        start.minute % 60,
-      ),
-      to.iana,
-    ),
+    getZoneParts(startResolved.instant, to.iana),
   );
   const extra = dayDeltaLabel(toDelta);
   return {
@@ -177,7 +180,7 @@ export function buildSnapshot(
   const currentHour = selectedHour ?? fromParts.hour;
   const table: TableRow[] = [];
   for (let hour = 0; hour < 24; hour += 1) {
-    const rowInstant = zonedTimeToUtc(
+    const resolved = resolveZonedTime(
       from.iana,
       fromParts.year,
       fromParts.month,
@@ -185,7 +188,28 @@ export function buildSnapshot(
       hour,
       0,
     );
-    const rowTo = getZoneParts(rowInstant, to.iana);
+    if (resolved.status === "gap") {
+      table.push({
+        fromHour: hour,
+        fromLabel12: hourLabel12(hour),
+        fromLabel24: hourLabel24(hour),
+        toHour: resolved.resolved.hour,
+        toMinute: resolved.resolved.minute,
+        toLabel12: "does not exist",
+        toLabel24: "does not exist",
+        dayDelta: 0,
+        dayDeltaLabel: "",
+        isNow: false,
+        isWorkFrom: false,
+        isWorkTo: false,
+        isNightFrom: isNightHour(hour),
+        isNightTo: false,
+        status: "gap",
+        instantIso: null,
+      });
+      continue;
+    }
+    const rowTo = getZoneParts(resolved.instant, to.iana);
     const fromForDelta: ZoneParts = { ...fromParts, hour, minute: 0, second: 0 };
     const delta = dayDelta(fromForDelta, rowTo);
     table.push({
@@ -203,6 +227,8 @@ export function buildSnapshot(
       isWorkTo: isWorkHour(rowTo.hour),
       isNightFrom: isNightHour(hour),
       isNightTo: isNightHour(rowTo.hour),
+      status: resolved.status,
+      instantIso: resolved.instant.toISOString(),
     });
   }
 
@@ -223,11 +249,11 @@ export function buildSnapshot(
     }
     const fromP = getZoneParts(sample, from.iana);
     const nine = getZoneParts(
-      zonedTimeToUtc(from.iana, fromP.year, fromP.month, fromP.day, 9, 0),
+      resolveZonedTime(from.iana, fromP.year, fromP.month, fromP.day, 9, 0).instant,
       to.iana,
     );
     const five = getZoneParts(
-      zonedTimeToUtc(from.iana, fromP.year, fromP.month, fromP.day, 17, 0),
+      resolveZonedTime(from.iana, fromP.year, fromP.month, fromP.day, 17, 0).instant,
       to.iana,
     );
     const qualifier = diff.share > 0.6 ? "For most of the year" : "At other times of the year";

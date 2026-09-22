@@ -4,6 +4,8 @@
  */
 import assert from "node:assert/strict";
 import test from "node:test";
+import { buildSnapshot } from "./converter";
+import { requireLocation } from "./locations";
 import { getDstInfo, getZoneParts, resolveZonedTime, zonedTimeToUtc } from "./time";
 
 const LA = "America/Los_Angeles";
@@ -71,4 +73,48 @@ test("fall fold 2026-11-01 01:30 is ambiguous; earlier occurrence chosen", () =>
 test("non-ambiguous fall-side times remain ok", () => {
   assert.equal(resolveZonedTime(LA, 2026, 11, 1, 0, 30).status, "ok");
   assert.equal(resolveZonedTime(LA, 2026, 11, 1, 2, 30).status, "ok");
+});
+
+test("spring-day table does not treat gap 2:00 and 3:00 as the same unique hour", () => {
+  const from = requireLocation("wa-seattle");
+  const to = requireLocation("hkt");
+  const noon = zonedTimeToUtc(LA, 2026, 3, 8, 12, 0);
+  const snapshot = buildSnapshot(from, to, noon);
+
+  const two = snapshot.table.find((row) => row.fromHour === 2);
+  const three = snapshot.table.find((row) => row.fromHour === 3);
+  assert.ok(two, "expected 2:00 row");
+  assert.ok(three, "expected 3:00 row");
+  assert.equal(two.status, "gap");
+  assert.equal(two.instantIso, null);
+  assert.equal(two.toLabel24, "does not exist");
+  assert.equal(three.status, "ok");
+  assert.equal(three.instantIso, "2026-03-08T10:00:00.000Z");
+  assert.notEqual(two.toLabel24, three.toLabel24);
+
+  const mapped = snapshot.table.filter((row) => row.status !== "gap");
+  const instants = mapped.map((row) => row.instantIso);
+  assert.ok(instants.every((iso) => iso != null));
+  assert.equal(new Set(instants).size, instants.length, "mapped local hours must have unique UTC instants");
+  assert.equal(mapped.length, 23);
+});
+
+test("ordinary day table maps 24 unique local hours", () => {
+  const from = requireLocation("wa-seattle");
+  const to = requireLocation("hkt");
+  const noon = zonedTimeToUtc(LA, 2026, 6, 15, 12, 0);
+  const snapshot = buildSnapshot(from, to, noon);
+  assert.ok(snapshot.table.every((row) => row.status === "ok"));
+  const instants = snapshot.table.map((row) => row.instantIso);
+  assert.equal(new Set(instants).size, 24);
+});
+
+test("bestMeeting on spring-forward day skips the gap hour", () => {
+  const from = requireLocation("wa-seattle");
+  const to = requireLocation("hkt");
+  const noon = zonedTimeToUtc(LA, 2026, 3, 8, 12, 0);
+  const snapshot = buildSnapshot(from, to, noon);
+  assert.ok(snapshot.meeting);
+  assert.notEqual(snapshot.meeting.fromStart, "2:00 am");
+  assert.equal(snapshot.meeting.note.includes("2:00 am–"), false);
 });
